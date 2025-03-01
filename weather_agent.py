@@ -1,4 +1,6 @@
 import os
+import datetime
+import re
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_openai import ChatOpenAI
@@ -16,6 +18,9 @@ weather_client = OpenWeather()
 # Default user ID (can be replaced with actual user authentication)
 DEFAULT_USER_ID = "test_user"
 
+# Get today's date
+TODAY_DATE = datetime.datetime.now().strftime("%A, %B %d, %Y")
+
 @tool
 def get_current_weather(city: str, country_code: str = None) -> str:
     """
@@ -28,20 +33,16 @@ def get_current_weather(city: str, country_code: str = None) -> str:
     Returns:
         A string with the current weather information
     """
-    # Get geolocation first
     location = weather_client.get_geolocation(city, country_code)
     if not location:
-        return f"Could not find location information for {city}"
-    
-    # Get coordinates
+        return f"❌ Sorry, I couldn't find location information for **{city}**."
+
     lat, lon = location[0]["lat"], location[0]["lon"]
-    
-    # Get current weather
     weather_data = weather_client.get_current_weather(lat, lon)
+
     if not weather_data:
-        return f"Could not retrieve weather data for {city}"
-    
-    # Use the formatting function from OpenWeather class
+        return f"⚠️ Weather data for **{city}** is currently unavailable."
+
     return weather_client.format_current_weather(weather_data, city, country_code)
 
 @tool
@@ -56,20 +57,16 @@ def get_weather_forecast(city: str, country_code: str = None) -> str:
     Returns:
         A string with the weather forecast information
     """
-    # Get geolocation first
     location = weather_client.get_geolocation(city, country_code)
     if not location:
-        return f"Could not find location information for {city}"
-    
-    # Get coordinates
+        return f"❌ Sorry, I couldn't find location information for **{city}**."
+
     lat, lon = location[0]["lat"], location[0]["lon"]
-    
-    # Get forecast
     forecast_data = weather_client.get_forecast(lat, lon)
+
     if not forecast_data:
-        return f"Could not retrieve forecast data for {city}"
-    
-    # Use the formatting function from OpenWeather class
+        return f"⚠️ Forecast data for **{city}** is currently unavailable."
+
     return weather_client.format_forecast(forecast_data, city, country_code)
 
 
@@ -83,37 +80,39 @@ def create_weather_agent(user_id=DEFAULT_USER_ID, k=5):
     )
     
     # Define the tools
-    tools = [
-        get_current_weather,
-        get_weather_forecast,
-    ]
+    tools = [get_current_weather, get_weather_forecast]
     
     # Create a prompt template with the required agent_scratchpad and chat history
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a weather assistant that must use the provided tools to fetch weather data. 
-        You are not allowed to generate answers based on general knowledge.
+        ("system", f"""You are a weather assistant with access to real-time weather data.
+        
+        📅 Today is **{TODAY_DATE}**.
+        
+        ✅ Your main tasks:
+        - If the user asks about **current weather (today)**, use `get_current_weather`.
+        - If the user asks about **future weather (tomorrow, next week, specific days, dates, or mentions "forecast")**, use `get_weather_forecast`.
+        - If the user's request is unclear, ask for clarification.
+        - Provide detailed responses in markdown format with emojis.
+        - Match the user's language when responding.
+        - If the city is not in the database, politely inform the user.
 
-        If a user asks about the weather in a city, you must call `get_current_weather` or `get_weather_forecast`.
+        ❌ **You CANNOT:**
+        - Make up weather information.
+        - Answer non-weather-related questions.
 
-        - If the user asks for **current weather**, use `get_current_weather`.
-        - If the user asks for **forecast**, use `get_weather_forecast`.
+        Example interactions:
+        **User:** "What's the weather like in Paris today?"
+        **Response:** "🌤️ The current temperature in **Paris** is 18°C with clear skies."
 
-        When responding to the user, consider the chat history to provide context-aware responses.
-        If the user refers to a previous conversation, check the chat history.
-
-        If the city name is missing, ask for clarification.
-        DO NOT answer general questions about weather without using the tools.
-        provide the answer in the same language as the user's question.
-        if the user's question is not about weather, say "I'm sorry, I can only answer questions about weather."
-        if the user's question is not clear, ask for clarification.
-        if the user's question is about a city that is not in the database, say "I'm sorry, I don't know the weather in that city."
-        provide the output in markdown format with a proper use of emojis, be detailed and explain the user in detail
+        **User:** "Will it rain in New York tomorrow?"
+        **Response:** "📅 **Tomorrow’s forecast for New York:** ..." (uses `get_weather_forecast`).
+        
+        **User:** "Weather for London next Monday?"
+        **Response:** "📅 **Weather forecast for Monday in London:** ..." (uses `get_weather_forecast`).
         """),
         
-        # Include chat history in the prompt
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}"),
-        # Add the required MessagesPlaceholder for agent_scratchpad
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     
@@ -147,22 +146,22 @@ if __name__ == "__main__":
     weather_agent, memory = create_weather_agent(DEFAULT_USER_ID)
     
     print("🌦️ Welcome to the Weather Assistant! 🌦️")
+    print("Today is:", TODAY_DATE)
     print("You can ask about current weather and forecasts.")
     print("Type 'exit' to quit.")
-    print()
-    
+
     while True:
         user_input = input("What would you like to know about the weather? ")
         if user_input.lower() in ["exit", "quit", "bye"]:
-            print("Goodbye! Have a great day! ☀️")
+            print("👋 Goodbye! Stay safe and check the weather before heading out!")
             break
         
+        
+        
         try:
-            # Process the user input with memory
             response = weather_agent.invoke({"input": user_input})
             response_output = response["output"]
             
-            print("\nResponse:", response_output)
-            print()
+            print("\n📢 Response:", response_output, "\n")
         except Exception as e:
-            print(f"❌ An error occurred: {e}") 
+            print(f"❌ An error occurred: {e}")

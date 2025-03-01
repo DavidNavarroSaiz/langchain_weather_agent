@@ -29,7 +29,7 @@ def test_conversation_memory():
     print(f"Assistant: {response1['output']}\n")
     
     # Second query with reference to previous query
-    query2 = "How about the forecast for the next few days?"
+    query2 = "is it going to rain tomorrow?"
     print(f"User: {query2}")
     response2 = weather_agent.invoke({"input": query2}, config)
     print(f"Assistant: {response2['output']}\n")
@@ -40,14 +40,14 @@ def test_conversation_memory():
     response3 = weather_agent.invoke({"input": query3}, config)
     print(f"Assistant: {response3['output']}\n")
     
-    # Check the stored messages
-    print("Retrieving chat history from MongoDB...")
-    chat_history = memory.get_chat_history()
-    print(f"Number of messages in history: {len(chat_history)}")
+    # # Check the stored messages
+    # print("Retrieving chat history from MongoDB...")
+    # chat_history = memory.get_chat_history()
+    # print(f"Number of messages in history: {len(chat_history)}")
     
-    print("\nChat History:")
-    for i, message in enumerate(chat_history):
-        print(f"{i+1}. {message.type}: {message.content[:50]}...")
+    # print("\nChat History:")
+    # for i, message in enumerate(chat_history):
+    #     print(f"{i+1}. {message.type}: {message.content[:50]}...")
 
 if __name__ == "__main__":
     test_conversation_memory() 
