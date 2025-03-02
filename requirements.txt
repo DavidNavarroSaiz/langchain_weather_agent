@@ -21,6 +21,7 @@ pytz>=2023.3
 fastapi>=0.104.0
 uvicorn>=0.23.2
 pydantic>=2.4.2
+python-multipart>=0.0.5
 
 # Streamlit dependencies
 streamlit>=1.30.0

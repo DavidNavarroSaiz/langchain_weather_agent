@@ -12,10 +12,11 @@ Features:
 import streamlit as st
 import requests
 import json
+import os
 from datetime import datetime
 
-# API Configuration - Adjust to your FastAPI server
-API_URL = "http://localhost:8000"
+# API Configuration - Use environment variable if available, otherwise default to localhost
+API_URL = os.environ.get("API_URL", "http://localhost:8080")
 
 # Set up Streamlit page
 st.set_page_config(

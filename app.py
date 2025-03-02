@@ -18,7 +18,6 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 from weather_agent import create_weather_agent
-from memory_handler import MongoDBConversationMemory
 from user_manager import UserManager
 
 # Load environment variables
