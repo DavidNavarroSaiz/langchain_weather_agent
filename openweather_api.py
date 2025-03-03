@@ -43,7 +43,7 @@ class OpenWeather:
             limit (int, optional): Maximum number of results to return
             
         Returns:
-            list or None: List of geolocation data or None if the request failed
+            list: List of geolocation data (empty list if the request failed)
         """
         params = {
             "q": f"{city_name},{state_code},{country_code}" if state_code and country_code else city_name,
@@ -60,11 +60,11 @@ class OpenWeather:
             else:
                 logger.warning(
                     f"Failed to get geolocation for {city_name}: {response.status_code}")
-                return None
+                return []
         except Exception as e:
             logger.error(
                 f"Error getting geolocation for {city_name}: {str(e)}")
-            return None
+            return []
 
     def get_current_weather(self, lat, lon, units="metric", lang="en"):
         """
@@ -137,6 +137,22 @@ class OpenWeather:
         except Exception as e:
             logger.error(f"Error getting forecast: {str(e)}")
             return None
+
+    def get_weather_forecast(self, lat, lon, units="metric", lang="en", cnt=40):
+        """
+        Alias for get_forecast method.
+        
+        Args:
+            lat (float): Latitude
+            lon (float): Longitude
+            units (str, optional): Units of measurement ('metric', 'imperial', or 'standard')
+            lang (str, optional): Language code for the response
+            cnt (int, optional): Number of timestamps to return (max 40)
+            
+        Returns:
+            dict or None: Forecast data or None if the request failed
+        """
+        return self.get_forecast(lat, lon, units, lang, cnt)
 
     def get_weather_map_url(self, layer, z, x, y):
         """

@@ -1,0 +1,29 @@
+[run]
+source = .
+omit =
+    tests/*
+    */__pycache__/*
+    */site-packages/*
+    */.venv/*
+    */.env/*
+    */migrations/*
+    */settings/*
+    */wsgi.py
+    */asgi.py
+    */manage.py
+    */setup.py
+    */conftest.py
+    */test_*.py
+    */.github/*
+    */docs/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError
+    def main 

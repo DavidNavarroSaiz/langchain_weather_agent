@@ -564,8 +564,6 @@ async def list_prompts(current_user: str = Depends(get_current_user)):
     tags=["Prompt Management"],
     summary="Get details of a specific prompt"
 )
-
-
 @app.post(
     "/prompts/update-all", 
     tags=["Prompt Management"],

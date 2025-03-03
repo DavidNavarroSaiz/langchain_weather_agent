@@ -341,3 +341,45 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [FastAPI](https://fastapi.tiangolo.com/) for the API framework
 - [Streamlit](https://streamlit.io/) for the UI framework
 - [MongoDB](https://www.mongodb.com/) for the database
+
+## 🧪 Testing and CI/CD
+
+- **🔄 Continuous Integration**: Automated testing and linting with GitHub Actions
+- **🧪 Comprehensive Test Suite**: Unit and integration tests for all components
+- **📊 Code Coverage**: Detailed code coverage reports
+- **🐳 Docker Testing**: Automated Docker build testing
+- **🔍 Quality Assurance**: Code quality checks with Black and isort
+
+The project includes a comprehensive test suite built with pytest. Tests cover all major components including the weather agent, API endpoints, user management, and memory handling.
+
+### Running Tests
+
+To run the tests locally:
+
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run all tests with coverage report
+pytest --cov=.
+
+# Run specific test files
+pytest tests/test_weather_agent.py
+
+# Run tests with specific markers
+pytest -m unit  # Run only unit tests
+pytest -m integration  # Run only integration tests
+```
+
+### Continuous Integration
+
+The project uses GitHub Actions for continuous integration. The CI pipeline:
+
+1. Runs on multiple Python versions (3.9, 3.10)
+2. Sets up a MongoDB service container for integration tests
+3. Installs all dependencies
+4. Runs linting checks with Black and isort
+5. Executes the test suite with coverage reporting
+6. Builds the Docker image to ensure it works correctly
+
+The CI workflow is defined in `.github/workflows/ci.yml`.
