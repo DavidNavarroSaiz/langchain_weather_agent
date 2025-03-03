@@ -1,7 +1,7 @@
 # Stormy - LangChain Weather Agent
 
+[![ChatBot-workflow](https://github.com/DavidNavarroSaiz/langchain_weather_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DavidNavarroSaiz/langchain_weather_agent/actions/workflows/ci.yml)
 ![Stormy Weather Agent](https://img.shields.io/badge/Stormy-Weather%20Agent-blue)
-![Python](https://img.shields.io/badge/Python-3.10-green)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Latest-red)
 ![LangChain](https://img.shields.io/badge/LangChain-Latest-orange)
