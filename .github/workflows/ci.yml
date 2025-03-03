@@ -22,6 +22,8 @@ jobs:
     - name: Test with pytest
       run: |
         make test
+      env:
+        OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
     - name: Format code
       run: |
         make format
