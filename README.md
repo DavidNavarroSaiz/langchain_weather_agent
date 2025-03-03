@@ -373,15 +373,15 @@ pytest -m unit  # Run only unit tests
 pytest -m integration  # Run only integration tests
 ```
 
-### Continuous Integration
+## Continuous Integration
 
-The project uses GitHub Actions for continuous integration. The CI pipeline:
+This project uses GitHub Actions for continuous integration to ensure code quality and reliability. The CI pipeline automatically runs on every push to the repository.
 
-1. Runs on multiple Python versions (3.9, 3.10)
-2. Sets up a MongoDB service container for integration tests
-3. Installs all dependencies
-4. Runs linting checks with Black and isort
-5. Executes the test suite with coverage reporting
-6. Builds the Docker image to ensure it works correctly
+### CI Workflow
 
-The CI workflow is defined in `.github/workflows/ci.yml`.
+The CI workflow performs the following steps:
+- Sets up Python 3.11.11
+- Installs dependencies
+- Runs linting checks
+- Executes tests
+- Formats code
