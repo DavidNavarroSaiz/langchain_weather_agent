@@ -77,7 +77,7 @@ def get_weather_forecast(city: str, country_code: str = None) -> str:
 
 
 # Create the LangChain agent
-def create_weather_agent(user_id=DEFAULT_USER_ID, k=5):
+def create_weather_agent(user_id=DEFAULT_USER_ID, k=3):
     """
     Create a LangChain agent for weather queries with MongoDB memory.
     

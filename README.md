@@ -26,6 +26,8 @@ A powerful weather assistant built with LangChain, FastAPI, and Streamlit. Storm
 
 The Stormy Weather Agent follows a modern microservices architecture:
 
+![Stormy Chatbot Architecture](./Stormy%20Chatbot%20Architecture.jpg)
+
 ```
 graph TD;
 
