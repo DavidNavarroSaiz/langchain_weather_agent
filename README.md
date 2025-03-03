@@ -9,6 +9,7 @@ A FastAPI-based REST API for interacting with a LangChain-powered weather agent.
 - 💾 Persistent conversation memory using MongoDB
 - 🌐 RESTful API with FastAPI
 - 📝 Comprehensive API documentation with Swagger UI
+- 🔄 Prompt management with LangSmith integration
 
 ## Setup
 
@@ -33,6 +34,12 @@ A FastAPI-based REST API for interacting with a LangChain-powered weather agent.
    MONGO_URI=mongodb://localhost:27017
    MONGO_DB=weather_agent_db
    MONGO_COLLECTION=chat_history
+   
+   # LangSmith
+   LANGSMITH_API_KEY=your_langsmith_api_key
+   LANGSMITH_TRACING=true
+   LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+   LANGSMITH_PROJECT=weather_agent
    ```
 
 3. Start the API server:
@@ -130,3 +137,47 @@ This project includes a Python wrapper for the OpenWeather API that uses environ
 - `get_current_weather(lat, lon, units="metric", lang="en")`: Get current weather for coordinates
 - `get_forecast(lat, lon, units="metric", lang="en", cnt=40)`: Get weather forecast
 - `get_weather_map_url(layer, z, x, y)`: Get URL for weather map tiles
+
+## Prompt Management
+
+The application includes a prompt management system that integrates with LangSmith to store, retrieve, and update prompts. This allows you to manage your weather agent prompts more effectively.
+
+### Prompt Management Endpoints
+
+- **GET /prompts**: List all prompts in the cache
+- **GET /prompts/{prompt_id}**: Get details of a specific prompt
+- **POST /prompts/update**: Update prompts in the cache
+- **POST /prompts/upload**: Upload the default weather prompt to LangSmith
+- **GET /test-prompts**: Test all prompts in the cache
+
+### Using LangSmith for Prompts
+
+The weather agent now uses LangSmith to retrieve prompts, which provides several benefits:
+
+1. **Version Control**: Track changes to your prompts over time
+2. **Centralized Management**: Manage prompts from a central location
+3. **Collaboration**: Share prompts with team members
+4. **Caching**: Reduce API calls by caching prompts locally
+
+### Prompt Cache System
+
+The `PromptCache` class provides a singleton instance for managing cached prompts from LangSmith. It handles:
+
+- Initializing the cache with prompts from LangSmith
+- Retrieving prompts from the cache
+- Updating prompts in the cache
+- Creating default prompts when needed
+- Uploading prompts to LangSmith
+
+### Example: Using the Prompt Cache
+
+```python
+from prompt_cache import PromptCache
+
+# Get a prompt from the cache
+prompt_cache = PromptCache()
+prompt = prompt_cache.get_prompt("weather_agent")
+
+# Use the prompt in your agent
+agent = create_openai_tools_agent(llm, tools, prompt)
+```

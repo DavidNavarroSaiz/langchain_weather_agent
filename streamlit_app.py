@@ -4,7 +4,7 @@ Weather Agent Streamlit App - UI Enhanced Version
 A Streamlit-based chat application for interacting with the Weather Agent API.
 Features:
 - User authentication
-- Real-time chat with AI
+- Real-time chat with Stormy, your weather assistant
 - Chat history management
 - Streamed responses for a smoother experience
 """
@@ -20,7 +20,7 @@ API_URL = os.environ.get("API_URL", "http://localhost:8080")
 
 # Set up Streamlit page
 st.set_page_config(
-    page_title="Weather Agent Chat",
+    page_title="Stormy - Your Weather Assistant",
     page_icon="🌤️",
     layout="centered",
 )
@@ -119,7 +119,7 @@ def fetch_chat_history():
 # Login Page
 def login_page():
     """Render login interface."""
-    st.title("🌤️ Weather Agent Login")
+    st.title("🌤️ Stormy - Your Weather Assistant")
 
     with st.form("login_form"):
         username = st.text_input("Username")
@@ -143,11 +143,12 @@ def login_page():
 # Chat Page
 def chat_page():
     """Render the chat interface."""
-    st.title("🌤️ Weather Agent Chat")
+    st.title("🌤️ Chat with Stormy")
 
     # Sidebar
     with st.sidebar:
         st.write(f"Logged in as: **{st.session_state.username}**")
+        st.write("Welcome to Stormy, your personal weather assistant!")
         if st.button("Logout"):
             logout()
         if st.button("Clear Chat History"):
@@ -160,7 +161,7 @@ def chat_page():
             st.markdown(message["content"])
 
     # Chat Input
-    user_input = st.chat_input("Ask about the weather:")
+    user_input = st.chat_input("Ask Stormy about the weather:")
     
     if user_input:
         # Display user message
@@ -172,7 +173,7 @@ def chat_page():
         response = send_message(user_input)
 
         if response:
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar="🌤️"):
                 st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 

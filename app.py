@@ -11,7 +11,7 @@ user data and conversation history.
 
 import os
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Depends, status, Query, Body
+from fastapi import FastAPI, HTTPException, Depends, status, Query, Body, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
@@ -19,6 +19,11 @@ from dotenv import load_dotenv
 
 from weather_agent import create_weather_agent
 from user_manager import UserManager
+from prompt_cache import PromptCache
+from logger_config import setup_logger
+
+# Set up logger
+logger = setup_logger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +54,31 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+# Initialize prompt cache on startup
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialize resources when the application starts.
+    
+    This function is called when the FastAPI application starts up.
+    It initializes the prompt cache and logs the startup event.
+    """
+    logger.info("Starting Weather Agent API")
+    
+    try:
+        # Initialize the prompt cache
+        logger.debug("Initializing prompt cache")
+        prompt_cache = PromptCache()
+        prompt_cache.initialize_cache()
+        
+        # Log the available prompts
+        prompts = prompt_cache.get_prompt_ids()
+        logger.info(f"Prompt cache initialized with {len(prompts)} prompts: {', '.join(prompts)}")
+        
+        logger.info("Weather Agent API started successfully")
+    except Exception as e:
+        logger.critical(f"Failed to initialize application: {str(e)}", exc_info=True)
 
 # Initialize user manager
 user_manager = UserManager()
@@ -309,20 +339,33 @@ async def chat_agent(
     """
     Send a query to the weather agent and get a response.
     
-    - **query**: The user's question about weather
+    This endpoint processes natural language queries about weather and returns
+    responses from the LangChain-based weather agent. The agent has access to
+    real-time weather data and can answer questions about current conditions
+    and forecasts.
+    
+    Args:
+        request: The query request containing the user's question
+        current_user: The authenticated user (automatically provided by the dependency)
     
     Examples of queries:
     - "What's the weather like in London today?"
     - "Will it rain in New York tomorrow?"
     - "What's the forecast for Tokyo for the next 5 days?"
     
-    Returns the agent's response to the query.
+    Returns:
+        QueryResponse containing the agent's response to the query
+    
+    Raises:
+        HTTPException: If there's an error processing the query
     
     Requires authentication. The authenticated user's ID is used to maintain conversation context.
     """
     try:
         # Use the authenticated user's ID from the token
         user_id = current_user
+        
+        logger.info(f"Processing chat query for user '{user_id}': '{request.query}'")
         
         # Get or create the agent for this user
         agent, _ = get_agent(user_id)
@@ -331,10 +374,15 @@ async def chat_agent(
         config = {"configurable": {"session_id": user_id}}
         
         # Process the query
+        logger.debug(f"Invoking agent for user '{user_id}'")
         response = agent.invoke({"input": request.query}, config)
+        
+        logger.info(f"Successfully processed query for user '{user_id}'")
+        logger.debug(f"Agent response: '{response['output'][:100]}...'")
         
         return QueryResponse(response=response["output"])
     except Exception as e:
+        logger.error(f"Error processing query for user '{current_user}': {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 # Chat History Routes
@@ -349,33 +397,48 @@ async def get_chat_history(
     current_user: str = Depends(get_current_user)
 ):
     """
-    Get the chat history for the current authenticated user.
+    Get chat history for the current authenticated user.
     
-    - **limit**: Optional parameter to limit the number of messages returned
+    This endpoint retrieves the conversation history between the user and the weather agent.
+    The history is stored in the MongoDB database and is specific to each user.
     
-    Returns a list of chat messages with their roles and content.
+    Args:
+        limit: Maximum number of messages to return (defaults to 10)
+        current_user: The authenticated user (automatically provided by the dependency)
+    
+    Returns:
+        ChatHistoryResponse containing a list of chat messages with role and content
+    
+    Raises:
+        HTTPException: If there's an error retrieving the chat history
     
     Requires authentication.
     """
     try:
+        logger.info(f"Retrieving chat history for user '{current_user}' with limit {limit}")
+        
         # Get or create the agent for this user
         _, memory = get_agent(current_user)
         
         # Get chat history
-        chat_history = memory.get_chat_history()
+        chat_history = memory.get_history()
         
-        # Convert to a list of dictionaries
+        logger.debug(f"Retrieved {len(chat_history)} messages from history for user '{current_user}'")
+        
+        # Format messages for response
         messages = [
-            {"role": msg.type, "content": msg.content}
+            {"role": "user" if msg["type"] == "human" else "assistant", "content": msg["content"]} 
             for msg in chat_history
         ]
         
         # Apply limit if specified
         if limit and limit > 0:
             messages = messages[-limit:]
+            logger.debug(f"Applied limit, returning {len(messages)} messages")
         
         return ChatHistoryResponse(messages=messages)
     except Exception as e:
+        logger.error(f"Error retrieving chat history for user '{current_user}': {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error retrieving chat history: {str(e)}")
 
 @app.delete(
@@ -387,23 +450,39 @@ async def delete_chat_history(current_user: str = Depends(get_current_user)):
     """
     Delete the chat history for the current authenticated user.
     
-    Returns a success message if the history was deleted.
+    This endpoint clears all conversation history between the user and the weather agent.
+    It also removes the agent from the cache to force recreation on the next request.
+    
+    Args:
+        current_user: The authenticated user (automatically provided by the dependency)
+    
+    Returns:
+        A dictionary with status and message indicating successful deletion
+    
+    Raises:
+        HTTPException: If there's an error deleting the chat history
     
     Requires authentication.
     """
     try:
+        logger.info(f"Deleting chat history for user '{current_user}'")
+        
         # Get or create the agent for this user
         _, memory = get_agent(current_user)
         
         # Clear chat history
         memory.clear_history()
+        logger.debug(f"Chat history cleared for user '{current_user}'")
         
         # Remove from cache to force recreation on next request
         if current_user in agent_cache:
             del agent_cache[current_user]
+            logger.debug(f"Removed agent from cache for user '{current_user}'")
         
+        logger.info(f"Successfully deleted chat history for user '{current_user}'")
         return {"status": "success", "message": f"Chat history deleted for user {current_user}"}
     except Exception as e:
+        logger.error(f"Error deleting chat history for user '{current_user}': {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error deleting chat history: {str(e)}")
 
 # Testing Routes
@@ -417,17 +496,212 @@ async def run_test_memory():
     """
     Run the test_memory script for testing purposes.
     
-    This endpoint is for development and testing only.
+    This endpoint is for development and testing only. It runs the test_conversation_memory
+    function from the test_memory module to verify that the conversation memory is working correctly.
+    
+    Returns:
+        A dictionary with status and message indicating successful test completion
+    
+    Raises:
+        HTTPException: If there's an error running the test
     """
     try:
+        logger.info("Running test_memory script")
+        
         from test_memory import test_conversation_memory
         
         # Run the test
+        logger.debug("Executing test_conversation_memory function")
         test_conversation_memory()
         
+        logger.info("Test completed successfully")
         return {"status": "success", "message": "Test completed successfully"}
     except Exception as e:
+        logger.error(f"Error running test: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error running test: {str(e)}")
+
+# Prompt Management Endpoints
+@app.get(
+    "/prompts", 
+    tags=["Prompt Management"],
+    summary="List all prompts in the cache"
+)
+async def list_prompts(current_user: str = Depends(get_current_user)):
+    """
+    List all prompts in the cache and their details.
+    
+    Returns a dictionary containing all prompts in the cache and their details.
+    
+    Requires authentication.
+    """
+    try:
+        prompt_cache = PromptCache()
+        prompts = prompt_cache.get_all_prompts()
+        return {
+            "status": "success",
+            "message": f"Found {len(prompts)} prompts",
+            "data": {
+                "prompt_count": len(prompts),
+                "prompts": prompts
+            }
+        }
+    except Exception as e:
+        logger.error("Error listing prompts: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Failed to list prompts",
+                "error_details": str(e)
+            }
+        )
+
+@app.get(
+    "/prompts/{prompt_id}", 
+    tags=["Prompt Management"],
+    summary="Get details of a specific prompt"
+)
+async def get_prompt_details(
+    prompt_id: str = Path(..., description="ID of the prompt to examine"),
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Get detailed information about a specific prompt.
+    
+    Returns the details of the specified prompt, including its template and input variables.
+    
+    Requires authentication.
+    
+    Args:
+        prompt_id: The ID of the prompt to examine
+    """
+    try:
+        prompt_cache = PromptCache()
+        prompt = prompt_cache.get_prompt(prompt_id)
+        
+        if prompt is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "message": f"Prompt '{prompt_id}' not found in cache",
+                }
+            )
+        
+        # Get prompt details from the cache
+        all_prompts = prompt_cache.get_all_prompts()
+        prompt_details = all_prompts.get(prompt_id, {})
+        
+        return {
+            "status": "success",
+            "message": f"Retrieved details for prompt: {prompt_id}",
+            "data": prompt_details
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error getting prompt details: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Failed to get prompt details",
+                "error_details": str(e)
+            }
+        )
+
+@app.get(
+    "/test-prompts", 
+    tags=["Prompt Management"],
+    summary="Test all prompts in the cache"
+)
+async def test_prompts(current_user: str = Depends(get_current_user)):
+    """
+    Test all prompts in the cache to ensure they are valid and can be used.
+    
+    Returns a dictionary containing the test results for each prompt.
+    
+    Requires authentication.
+    """
+    try:
+        prompt_cache = PromptCache()
+        prompts = prompt_cache.get_all_prompts()
+        
+        # Test each prompt by checking if it exists and has the expected structure
+        test_results = {}
+        for prompt_id, details in prompts.items():
+            prompt = prompt_cache.get_prompt(prompt_id)
+            test_results[prompt_id] = {
+                "exists": prompt is not None,
+                "type": details.get("type", "Unknown"),
+                "input_variables": details.get("input_variables", []),
+                "valid": prompt is not None and hasattr(prompt, "format")
+            }
+        
+        return {
+            "status": "success",
+            "message": f"Tested {len(test_results)} prompts",
+            "data": {
+                "test_results": test_results
+            }
+        }
+    except Exception as e:
+        logger.error("Error testing prompts: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Failed to test prompts",
+                "error_details": str(e)
+            }
+        )
+
+@app.post(
+    "/prompts/update-all", 
+    tags=["Prompt Management"],
+    summary="Update all prompts in the cache"
+)
+async def update_all_prompts(current_user: str = Depends(get_current_user)):
+    """
+    Update all prompts in the cache by pulling the latest versions from LangChain Hub.
+    
+    Use this endpoint after making changes to prompts in LangChain Hub to refresh all cached versions.
+    
+    Returns a dictionary containing the update results for each prompt.
+    
+    Requires authentication.
+    """
+    try:
+        prompt_cache = PromptCache()
+        
+        # Update all prompts
+        results = prompt_cache.update_all_prompts()
+        
+        # Count successes and failures
+        success_count = sum(1 for success in results.values() if success)
+        failure_count = len(results) - success_count
+        
+        # Get updated prompt details
+        all_prompts = prompt_cache.get_all_prompts()
+        
+        return {
+            "status": "success",
+            "message": f"Updated {success_count} prompts successfully, {failure_count} failed",
+            "data": {
+                "update_results": results,
+                "prompts": all_prompts
+            }
+        }
+    except Exception as e:
+        logger.error("Error updating all prompts: %s", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Failed to update all prompts",
+                "error_details": str(e)
+            }
+        )
 
 if __name__ == "__main__":
     import uvicorn
