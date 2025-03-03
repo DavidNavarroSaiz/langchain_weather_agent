@@ -53,7 +53,7 @@ def login(username, password):
             st.session_state.access_token = data["access_token"]
             st.session_state.username = username
             st.session_state.authenticated = True
-            fetch_chat_history()
+            fetch_chat_history(limit=100)
             return True
         else:
             return False
@@ -98,7 +98,7 @@ def send_message(query):
         st.error(f"Error sending message: {e}")
         return None
 
-def fetch_chat_history():
+def fetch_chat_history(limit=50):
     """Retrieve chat history from API."""
     if not st.session_state.authenticated:
         return
@@ -106,15 +106,19 @@ def fetch_chat_history():
     headers = {"Authorization": f"Bearer {st.session_state.access_token}"}
     
     try:
-        response = requests.get(f"{API_URL}/chat-history", headers=headers)
+        response = requests.get(f"{API_URL}/chat-history?limit={limit}", headers=headers)
         if response.status_code == 200:
-            st.session_state.messages = response.json()["messages"]
+            history_data = response.json()
+            st.session_state.messages = history_data["messages"]
+            return True
         else:
             st.error(f"Error fetching chat history: {response.json().get('detail', 'Unknown error')}")
             if response.status_code == 401:
                 logout()
+            return False
     except Exception as e:
         st.error(f"Error fetching chat history: {e}")
+        return False
 
 # Login Page
 def login_page():
@@ -153,13 +157,24 @@ def chat_page():
             logout()
         if st.button("Clear Chat History"):
             st.session_state.messages = []
-            st.success("Chat history cleared!")
+            try:
+                headers = {"Authorization": f"Bearer {st.session_state.access_token}"}
+                requests.delete(f"{API_URL}/chat-history", headers=headers)
+                st.success("Chat history cleared!")
+            except Exception as e:
+                st.error(f"Error clearing chat history: {e}")
+        if st.button("Refresh Chat History"):
+            with st.spinner("Loading chat history..."):
+                if fetch_chat_history(limit=100):
+                    st.success("Chat history refreshed!")
 
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
+    # Display chat history with a loading indicator if messages exist
+    if st.session_state.messages:
+        with st.container():
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"], avatar="🌤️" if message["role"] == "assistant" else None):
+                    st.markdown(message["content"])
+    
     # Chat Input
     user_input = st.chat_input("Ask Stormy about the weather:")
     

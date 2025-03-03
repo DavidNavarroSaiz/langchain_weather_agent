@@ -393,7 +393,7 @@ async def chat_agent(
     summary="Get chat history for the current user"
 )
 async def get_chat_history(
-    limit: int = Query(10, description="Maximum number of messages to return"),
+    limit: int = Query(50, description="Maximum number of messages to return"),
     current_user: str = Depends(get_current_user)
 ):
     """
@@ -403,7 +403,7 @@ async def get_chat_history(
     The history is stored in the MongoDB database and is specific to each user.
     
     Args:
-        limit: Maximum number of messages to return (defaults to 10)
+        limit: Maximum number of messages to return (defaults to 50)
         current_user: The authenticated user (automatically provided by the dependency)
     
     Returns:
@@ -420,14 +420,17 @@ async def get_chat_history(
         # Get or create the agent for this user
         _, memory = get_agent(current_user)
         
-        # Get chat history
-        chat_history = memory.get_history()
+        # Get chat history directly from the memory handler
+        chat_history = memory.get_chat_history()
         
         logger.debug(f"Retrieved {len(chat_history)} messages from history for user '{current_user}'")
         
         # Format messages for response
         messages = [
-            {"role": "user" if msg["type"] == "human" else "assistant", "content": msg["content"]} 
+            {
+                "role": "user" if msg.type == "human" else "assistant",
+                "content": msg.content
+            } 
             for msg in chat_history
         ]
         
