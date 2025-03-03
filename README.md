@@ -28,62 +28,6 @@ The Stormy Weather Agent follows a modern microservices architecture:
 
 ![Stormy Chatbot Architecture](./Stormy%20Chatbot%20Architecture.jpg)
 
-```
-graph TD;
-
-    %% User Interaction
-    User["🌤️ User Inputs Query"] -->|Sends Query| StreamlitUI["📱 Streamlit Chat UI"];
-    
-    %% Backend API
-    StreamlitUI -->|POST /api/chat| FastAPI["🚀 FastAPI Backend"];
-    
-    %% Authentication
-    FastAPI -->|Validates JWT Token| Auth["🔐 User Authentication"];
-    Auth -->|User Verified| FastAPI;
-
-    %% Agent Execution
-    FastAPI -->|Passes Query| AgentExecutor["🤖 LangChain AgentExecutor"];
-    
-    %% Decision Making
-    AgentExecutor -->|Selects Tool| ToolDecision{"🤔 Decide Tool?"};
-    
-    ToolDecision -->|Weather Now?| GetCurrentWeather["🌦️ get_current_weather"];
-    ToolDecision -->|Forecast?| GetForecast["📅 get_weather_forecast"];
-
-    %% Tool Execution
-    GetCurrentWeather -->|Fetches Data| OpenWeatherAPI["🌍 OpenWeather API"];
-    GetForecast -->|Fetches Forecast| OpenWeatherAPI;
-
-    %% Prompt Cache System
-    AgentExecutor -->|Fetches Prompt| PromptCache["📝 PromptCache"];
-    PromptCache -->|Checks Cache| CheckCache{"📂 Prompt in Cache?"};
-    
-    CheckCache -->|Yes| UseCachedPrompt["✅ Use Cached Prompt"];
-    CheckCache -->|No| FetchFromHub["🔄 Fetch from LangChain Hub / LangSmith"];
-    
-    FetchFromHub -->|Retrieve Prompt| PromptCache;
-    PromptCache -->|Update Cache| UseCachedPrompt;
-    
-    UseCachedPrompt -->|Send to Agent| AgentExecutor;
-
-    %% Memory & Context
-    AgentExecutor -->|Stores Chat History| MongoDBMemory["💾 MongoDB Chat Memory"];
-    MongoDBMemory -->|Retrieves Context| AgentExecutor;
-
-    %% LangSmith Tracking
-    subgraph "📊 LangSmith Monitoring"
-        AgentExecutor -->|Track Query| LangSmithTrack["📈 Log to LangSmith"];
-        GetCurrentWeather -->|Track Call| LangSmithTrack;
-        GetForecast -->|Track Call| LangSmithTrack;
-        FetchFromHub -->|Track Prompt Fetch| LangSmithTrack;
-        UseCachedPrompt -->|Track Cache Usage| LangSmithTrack;
-    end
-    
-    %% Response Back
-    PromptCache -->|Formatted Response| FastAPI;
-    FastAPI -->|Returns Response| StreamlitUI;
-    StreamlitUI -->|Displays Response| User;
-```
 
 ## 🚀 Getting Started
 
