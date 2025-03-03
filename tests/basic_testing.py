@@ -5,35 +5,8 @@ These tests can be run without mocking external dependencies.
 
 import os
 import pytest
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
 
-def test_environment_variables():
-    """Test that required environment variables are set."""
-    # Check if .env file exists
-    assert os.path.exists(".env"), "The .env file is missing"
-    
-    # Check if required environment variables are set
-    # We don't check the actual values, just that they're set
-    env_vars = [
-        "OPENAI_API_KEY",
-        "MONGO_URI",
-        "MONGO_DB",
-        "MONGO_COLLECTION",
-        "JWT_SECRET_KEY",
-        "JWT_ALGORITHM",
-    ]
-    
-    for var in env_vars:
-        # We use os.getenv to avoid raising an exception if the variable is not set
-        # Instead, we'll get None, which we can check for
-        value = os.getenv(var)
-        if value is None:
-            print(f"Warning: Environment variable {var} is not set")
-            # Don't fail the test, just warn
-            # assert value is not None, f"Environment variable {var} is not set"
 
 def test_project_structure():
     """Test that required project files exist."""

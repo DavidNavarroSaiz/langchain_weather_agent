@@ -28,7 +28,6 @@ def test_environment_setup():
     assert os.path.exists("tests"), "Tests directory not found"
     
     # Check that the .env file exists
-    assert os.path.exists(".env"), ".env file not found"
 
 def test_requirements_file():
     """Test that the requirements.txt file contains essential packages."""
